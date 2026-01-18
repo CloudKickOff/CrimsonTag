@@ -144,7 +144,7 @@ public class ForceVolume : MonoBehaviour
 		{
 			Player.Instance.SetMaximumSlipThisFrame();
 		}
-		Vector3 velocity = rb.velocity;
+		Vector3 velocity = rb.linearVelocity;
 		Vector3 vector = Vector3.Dot(xf.position - base.transform.position, base.transform.up) * base.transform.up;
 		Vector3 vector2 = base.transform.position + vector - xf.position;
 		float num = vector2.magnitude + 0.0001f;
@@ -199,6 +199,6 @@ public class ForceVolume : MonoBehaviour
 				}
 			}
 		}
-		rb.velocity = velocity;
+		rb.linearVelocity = velocity;
 	}
 }

@@ -7,7 +7,7 @@ internal static class VRUtil
 	public static bool isPresent()
 	{
 		List<XRDisplaySubsystem> list = new List<XRDisplaySubsystem>();
-		SubsystemManager.GetInstances(list);
+		SubsystemManager.GetSubsystems(list);
 		foreach (XRDisplaySubsystem item in list)
 		{
 			if (item.running)

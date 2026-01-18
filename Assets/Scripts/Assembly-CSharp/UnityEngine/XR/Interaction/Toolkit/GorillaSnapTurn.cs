@@ -4,7 +4,7 @@ using GorillaLocomotion;
 
 namespace UnityEngine.XR.Interaction.Toolkit
 {
-	public class GorillaSnapTurn : LocomotionProvider
+	public class GorillaSnapTurn : UnityEngine.XR.Interaction.Toolkit.Locomotion.LocomotionProvider
 	{
 		public enum InputAxes
 		{
@@ -136,7 +136,7 @@ namespace UnityEngine.XR.Interaction.Toolkit
 			}
 			if (Math.Abs(m_CurrentTurnAmount) > 0f && BeginLocomotion())
 			{
-				if (base.system.xrRig != null)
+				if (base.system.xrOrigin != null)
 				{
 					Player.Instance.Turn(m_CurrentTurnAmount);
 				}

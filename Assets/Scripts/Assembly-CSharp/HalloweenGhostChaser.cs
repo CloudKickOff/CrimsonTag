@@ -500,7 +500,7 @@ public class HalloweenGhostChaser : MonoBehaviourPunCallbacks, IInRoomCallbacks,
 		}
 		if (Time.time < grabTime + grabDuration)
 		{
-			GorillaTagger.Instance.GetComponent<Rigidbody>().velocity = Vector3.up * grabSpeed;
+			GorillaTagger.Instance.GetComponent<Rigidbody>().linearVelocity = Vector3.up * grabSpeed;
 		}
 	}
 

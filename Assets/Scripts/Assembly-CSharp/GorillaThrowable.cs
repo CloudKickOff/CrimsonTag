@@ -194,19 +194,19 @@ public class GorillaThrowable : MonoBehaviourPun, IPunObservable, IPhotonViewCal
 		{
 			if (denormalizedVelocityAverage.magnitude * throwMultiplier < throwMagnitudeLimit)
 			{
-				rigidbody.velocity = denormalizedVelocityAverage * throwMultiplier + currentHeadsetVelocity;
+				rigidbody.linearVelocity = denormalizedVelocityAverage * throwMultiplier + currentHeadsetVelocity;
 			}
 			else
 			{
-				rigidbody.velocity = denormalizedVelocityAverage.normalized * throwMagnitudeLimit + currentHeadsetVelocity;
+				rigidbody.linearVelocity = denormalizedVelocityAverage.normalized * throwMagnitudeLimit + currentHeadsetVelocity;
 			}
 		}
 		else
 		{
-			rigidbody.velocity = denormalizedVelocityAverage.normalized * Mathf.Max(Mathf.Min(Mathf.Pow(throwMultiplier * denormalizedVelocityAverage.magnitude / linearMax, exponThrowMultMax), 0.1f) * denormalizedHeadsetVelocityAverage.magnitude, throwMagnitudeLimit) + currentHeadsetVelocity;
+			rigidbody.linearVelocity = denormalizedVelocityAverage.normalized * Mathf.Max(Mathf.Min(Mathf.Pow(throwMultiplier * denormalizedVelocityAverage.magnitude / linearMax, exponThrowMultMax), 0.1f) * denormalizedHeadsetVelocityAverage.magnitude, throwMagnitudeLimit) + currentHeadsetVelocity;
 		}
 		rigidbody.angularVelocity = denormalizedRotationalVelocityAverage * (float)Math.PI / 180f;
-		rigidbody.MovePosition(rigidbody.transform.position + rigidbody.velocity * Time.deltaTime);
+		rigidbody.MovePosition(rigidbody.transform.position + rigidbody.linearVelocity * Time.deltaTime);
 	}
 
 	void IPunObservable.OnPhotonSerializeView(PhotonStream stream, PhotonMessageInfo info)
@@ -215,13 +215,13 @@ public class GorillaThrowable : MonoBehaviourPun, IPunObservable, IPhotonViewCal
 		{
 			stream.SendNext(base.transform.position);
 			stream.SendNext(base.transform.rotation);
-			stream.SendNext(rigidbody.velocity);
+			stream.SendNext(rigidbody.linearVelocity);
 		}
 		else
 		{
 			targetPosition = (Vector3)stream.ReceiveNext();
 			targetRotation = (Quaternion)stream.ReceiveNext();
-			rigidbody.velocity = (Vector3)stream.ReceiveNext();
+			rigidbody.linearVelocity = (Vector3)stream.ReceiveNext();
 		}
 	}
 
@@ -250,6 +250,6 @@ public class GorillaThrowable : MonoBehaviourPun, IPunObservable, IPhotonViewCal
 
 	public float InterpolateVolume()
 	{
-		return (Mathf.Clamp(rigidbody.velocity.magnitude, minVelocity, maxVelocity) - minVelocity) / (maxVelocity - minVelocity) * (maxVolume - minVolume) + minVolume;
+		return (Mathf.Clamp(rigidbody.linearVelocity.magnitude, minVelocity, maxVelocity) - minVelocity) / (maxVelocity - minVelocity) * (maxVolume - minVolume) + minVolume;
 	}
 }

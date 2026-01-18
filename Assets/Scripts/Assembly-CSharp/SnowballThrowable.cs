@@ -145,7 +145,7 @@ public class SnowballThrowable : HoldableObject
 		Rigidbody component2 = GorillaTagger.Instance.GetComponent<Rigidbody>();
 		if (component2 != null)
 		{
-			vector = component2.velocity;
+			vector = component2.linearVelocity;
 		}
 		Vector3 vector2 = linearVelocity + zero + vector;
 		if (GorillaGameManager.instance != null)

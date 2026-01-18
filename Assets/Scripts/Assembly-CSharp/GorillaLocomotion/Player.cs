@@ -590,29 +590,29 @@ namespace GorillaLocomotion
 				}
 				if (!wasLeftHandSlide && !wasRightHandSlide)
 				{
-					slideAverage = ((Vector3.Dot(playerRigidBody.velocity, slideAverageNormal) <= 0f) ? Vector3.ProjectOnPlane(playerRigidBody.velocity, slideAverageNormal) : playerRigidBody.velocity);
+					slideAverage = ((Vector3.Dot(playerRigidBody.linearVelocity, slideAverageNormal) <= 0f) ? Vector3.ProjectOnPlane(playerRigidBody.linearVelocity, slideAverageNormal) : playerRigidBody.linearVelocity);
 				}
 				else
 				{
 					slideAverage = ((Vector3.Dot(slideAverage, slideAverageNormal) <= 0f) ? Vector3.ProjectOnPlane(slideAverage, slideAverageNormal) : slideAverage);
 				}
 				slideAverage = slideAverage.normalized * Mathf.Min(slideAverage.magnitude, Mathf.Max(0.5f, denormalizedVelocityAverage.magnitude * 2f));
-				playerRigidBody.velocity = Vector3.zero;
+				playerRigidBody.linearVelocity = Vector3.zero;
 			}
 			else if (leftHandColliding || rightHandColliding)
 			{
 				if (!didATurn)
 				{
-					playerRigidBody.velocity = Vector3.zero;
+					playerRigidBody.linearVelocity = Vector3.zero;
 				}
 				else
 				{
-					playerRigidBody.velocity = playerRigidBody.velocity.normalized * Mathf.Min(2f, playerRigidBody.velocity.magnitude);
+					playerRigidBody.linearVelocity = playerRigidBody.linearVelocity.normalized * Mathf.Min(2f, playerRigidBody.linearVelocity.magnitude);
 				}
 			}
 			else if (wasLeftHandSlide || wasRightHandSlide)
 			{
-				playerRigidBody.velocity = ((Vector3.Dot(slideAverage, slideAverageNormal) <= 0f) ? Vector3.ProjectOnPlane(slideAverage, slideAverageNormal) : slideAverage);
+				playerRigidBody.linearVelocity = ((Vector3.Dot(slideAverage, slideAverageNormal) <= 0f) ? Vector3.ProjectOnPlane(slideAverage, slideAverageNormal) : slideAverage);
 			}
 			if ((rightHandColliding || leftHandColliding) && !disableMovement && !didATurn && !didAJump)
 			{
@@ -623,13 +623,13 @@ namespace GorillaLocomotion
 						leftHandSlide = false;
 						rightHandSlide = false;
 						didAJump = true;
-						playerRigidBody.velocity = Mathf.Min(maxJumpSpeed * ExtraVelMaxMultiplier(), jumpMultiplier * ExtraVelMultiplier() * Vector3.Project(denormalizedVelocityAverage, slideAverageNormal).magnitude) * slideAverageNormal.normalized + Vector3.ProjectOnPlane(slideAverage, slideAverageNormal);
+						playerRigidBody.linearVelocity = Mathf.Min(maxJumpSpeed * ExtraVelMaxMultiplier(), jumpMultiplier * ExtraVelMultiplier() * Vector3.Project(denormalizedVelocityAverage, slideAverageNormal).magnitude) * slideAverageNormal.normalized + Vector3.ProjectOnPlane(slideAverage, slideAverageNormal);
 					}
 				}
 				else if (denormalizedVelocityAverage.magnitude > velocityLimit * scale)
 				{
 					didAJump = true;
-					playerRigidBody.velocity = Mathf.Min(maxJumpSpeed * ExtraVelMaxMultiplier(), jumpMultiplier * ExtraVelMultiplier() * denormalizedVelocityAverage.magnitude) * denormalizedVelocityAverage.normalized;
+					playerRigidBody.linearVelocity = Mathf.Min(maxJumpSpeed * ExtraVelMaxMultiplier(), jumpMultiplier * ExtraVelMultiplier() * denormalizedVelocityAverage.magnitude) * denormalizedVelocityAverage.normalized;
 				}
 			}
 			if (leftHandColliding && (CurrentLeftHandPosition() - LastLeftHandPosition()).magnitude > unStickDistance * scale && !Physics.Raycast(headCollider.transform.position, (CurrentLeftHandPosition() - headCollider.transform.position).normalized, out hitInfo, (CurrentLeftHandPosition() - headCollider.transform.position).magnitude, locomotionEnabledLayers.value))
@@ -644,7 +644,7 @@ namespace GorillaLocomotion
 			}
 			if (currentPlatform == null)
 			{
-				playerRigidBody.velocity += refMovement / calcDeltaTime;
+				playerRigidBody.linearVelocity += refMovement / calcDeltaTime;
 				refMovement = Vector3.zero;
 			}
 			leftHandFollower.position = lastLeftHandPosition;
@@ -962,7 +962,7 @@ namespace GorillaLocomotion
 
 		private void AntiTeleportTechnology()
 		{
-			if ((headCollider.transform.position - lastHeadPosition).magnitude >= teleportThresholdNoVel + playerRigidBody.velocity.magnitude * calcDeltaTime)
+			if ((headCollider.transform.position - lastHeadPosition).magnitude >= teleportThresholdNoVel + playerRigidBody.linearVelocity.magnitude * calcDeltaTime)
 			{
 				base.transform.position = base.transform.position + lastHeadPosition - headCollider.transform.position;
 			}

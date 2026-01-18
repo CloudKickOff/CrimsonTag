@@ -54,7 +54,7 @@ public class SlingshotProjectile : MonoBehaviour
 		Transform obj = base.transform;
 		obj.position = position;
 		obj.localScale = Vector3.one * scale;
-		projectileRigidbody.velocity = velocity;
+		projectileRigidbody.linearVelocity = velocity;
 		projectileOwner = player;
 		myProjectileCount = projectileCount;
 		ColorizeProjectile(blueTeam, orangeTeam);

@@ -93,7 +93,7 @@ public class BalloonDynamics : MonoBehaviour
 
 	private void ApplyAirResistance()
 	{
-		rb.velocity *= 1f - airResistance;
+		rb.linearVelocity *= 1f - airResistance;
 	}
 
 	private void ApplyDistanceConstraint()
@@ -104,7 +104,7 @@ public class BalloonDynamics : MonoBehaviour
 		float magnitude = vector.magnitude;
 		if (magnitude > stringLength)
 		{
-			Vector3 vector2 = Vector3.Dot(knotRb.velocity, normalized) * normalized;
+			Vector3 vector2 = Vector3.Dot(knotRb.linearVelocity, normalized) * normalized;
 			float num = magnitude - stringLength;
 			float num2 = num / Time.fixedDeltaTime;
 			if (vector2.magnitude < num2)
@@ -129,7 +129,7 @@ public class BalloonDynamics : MonoBehaviour
 			rb.isKinematic = kinematic;
 			if (!enable)
 			{
-				rb.velocity = Vector3.zero;
+				rb.linearVelocity = Vector3.zero;
 				rb.angularVelocity = Vector3.zero;
 			}
 		}
@@ -151,8 +151,8 @@ public class BalloonDynamics : MonoBehaviour
 			{
 				ApplyDistanceConstraint();
 			}
-			float magnitude = rb.velocity.magnitude;
-			rb.velocity = rb.velocity.normalized * Mathf.Min(magnitude, maximumVelocity);
+			float magnitude = rb.linearVelocity.magnitude;
+			rb.linearVelocity = rb.linearVelocity.normalized * Mathf.Min(magnitude, maximumVelocity);
 		}
 	}
 }

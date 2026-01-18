@@ -56,7 +56,7 @@ public class GorillaEnemyAI : MonoBehaviourPun, IPunObservable, IInRoomCallbacks
 				agent.destination = playerTransform.position;
 			}
 			base.transform.LookAt(new Vector3(playerTransform.transform.position.x, base.transform.position.y, playerTransform.position.z));
-			r.velocity *= 0.99f;
+			r.linearVelocity *= 0.99f;
 		}
 		else
 		{

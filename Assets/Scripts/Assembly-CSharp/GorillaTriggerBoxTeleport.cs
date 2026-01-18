@@ -8,7 +8,7 @@ public class GorillaTriggerBoxTeleport : GorillaTriggerBox
 
 	public override void OnBoxTriggered()
 	{
-		cameraOffest.GetComponent<Rigidbody>().velocity = new Vector3(0f, 0f, 0f);
+		cameraOffest.GetComponent<Rigidbody>().linearVelocity = new Vector3(0f, 0f, 0f);
 		cameraOffest.transform.position = teleportLocation;
 	}
 }

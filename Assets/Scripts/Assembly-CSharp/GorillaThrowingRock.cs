@@ -31,9 +31,9 @@ public class GorillaThrowingRock : GorillaThrowable, IPunInstantiateMagicCallbac
 		if (hitRig != null && !hitRig.isOfflineVRRig && (!PhotonView.Get(hitRig).IsMine || !isHeld))
 		{
 			Debug.Log("found rig");
-			if (!isHeld && rigidbody.velocity.magnitude > bonkSpeedMin)
+			if (!isHeld && rigidbody.linearVelocity.magnitude > bonkSpeedMin)
 			{
-				PhotonView.Get(hitRig).RPC("Bonk", RpcTarget.All, 4, (Mathf.Clamp(rigidbody.velocity.magnitude, bonkSpeedMin, bonkSpeedMax) - 1f) / 5f + 0.05f);
+				PhotonView.Get(hitRig).RPC("Bonk", RpcTarget.All, 4, (Mathf.Clamp(rigidbody.linearVelocity.magnitude, bonkSpeedMin, bonkSpeedMax) - 1f) / 5f + 0.05f);
 			}
 			else if (isHeld)
 			{
