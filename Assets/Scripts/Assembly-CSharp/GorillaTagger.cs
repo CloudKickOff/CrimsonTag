@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using GorillaLocomotion;
 using GorillaNetworking;
 using Photon.Pun;
@@ -7,6 +8,7 @@ using Photon.Voice.Unity;
 using Steamworks;
 using UnityEngine;
 using UnityEngine.XR;
+using UnityEngine.XR.Management;
 
 public class GorillaTagger : MonoBehaviour
 {
@@ -166,6 +168,10 @@ public class GorillaTagger : MonoBehaviour
 
 	private bool isGameOverlayActive;
 
+	// Cached XR loader type (replaces deprecated XRSettings.loadedDeviceName checks)
+	private bool isOculusLoader;
+	private bool isOpenVRLoader;
+
 	public static GorillaTagger Instance => _instance;
 
 	public float sphereCastRadius => 0.03f;
@@ -210,7 +216,13 @@ public class GorillaTagger : MonoBehaviour
 
 	protected void Start()
 	{
-		if (XRSettings.loadedDeviceName == "OpenVR")
+		// Cache XR loader type (replaces deprecated XRSettings.loadedDeviceName)
+		var activeLoader = XRGeneralSettings.Instance?.Manager?.activeLoader;
+		string loaderName = activeLoader?.GetType().Name ?? "";
+		isOpenVRLoader = loaderName.Contains("OpenVR");
+		isOculusLoader = loaderName.Contains("Oculus");
+
+		if (isOpenVRLoader)
 		{
 			GorillaLocomotion.Player.Instance.leftHandOffset = new Vector3(-0.02f, 0f, -0.07f);
 			GorillaLocomotion.Player.Instance.rightHandOffset = new Vector3(0.02f, 0f, -0.07f);
@@ -247,7 +259,7 @@ public class GorillaTagger : MonoBehaviour
 			}
 			GorillaLocomotion.Player.Instance.inOverlay = false;
 		}*/
-		if (XRSettings.loadedDeviceName == "Oculus")
+		if (isOculusLoader)
 		{
 			if (OVRManager.hasInputFocus && !overrideNotInFocus)
 			{
@@ -274,24 +286,37 @@ public class GorillaTagger : MonoBehaviour
 				wasInOverlay = true;
 			}
 		}
-		/*if (VRUtil.isPresent() && Application.platform != RuntimePlatform.Android)
+		/* UPDATED: PC VR Refresh Rate Adjustment
+		 * Original code used deprecated XRDevice.refreshRate
+		 * Modern approach: Use XRDisplaySubsystem or OVRPlugin.systemDisplayFrequency
+		 *
+		if (isOpenVRLoader && Application.platform != RuntimePlatform.Android)
 		{
-			if (Mathf.Abs(Time.fixedDeltaTime - 1f / XRDevice.refreshRate) > 0.0001f)
+			// Get refresh rate from display subsystem
+			float displayRefreshRate = 90f; // default fallback
+			var displaySubsystems = new List<XRDisplaySubsystem>();
+			SubsystemManager.GetSubsystems(displaySubsystems);
+			if (displaySubsystems.Count > 0 && displaySubsystems[0].TryGetDisplayRefreshRate(out float rate))
+			{
+				displayRefreshRate = rate;
+			}
+
+			if (Mathf.Abs(Time.fixedDeltaTime - 1f / displayRefreshRate) > 0.0001f)
 			{
 				Debug.Log(" =========== adjusting refresh size =========");
 				Debug.Log(" fixedDeltaTime before:\t" + Time.fixedDeltaTime);
-				Debug.Log(" refresh rate         :\t" + XRDevice.refreshRate);
-				Time.fixedDeltaTime = 1f / XRDevice.refreshRate;
+				Debug.Log(" refresh rate         :\t" + displayRefreshRate);
+				Time.fixedDeltaTime = 1f / displayRefreshRate;
 				Debug.Log(" fixedDeltaTime after :\t" + Time.fixedDeltaTime);
 				Debug.Log(" history size before  :\t" + GorillaLocomotion.Player.Instance.velocityHistorySize);
-				GorillaLocomotion.Player.Instance.velocityHistorySize = Mathf.Max(Mathf.Min(Mathf.FloorToInt(XRDevice.refreshRate * (1f / 12f)), 10), 6);
+				GorillaLocomotion.Player.Instance.velocityHistorySize = Mathf.Max(Mathf.Min(Mathf.FloorToInt(displayRefreshRate * (1f / 12f)), 10), 6);
 				if (GorillaLocomotion.Player.Instance.velocityHistorySize > 9)
 				{
 					GorillaLocomotion.Player.Instance.velocityHistorySize--;
 				}
 				Debug.Log("new history size: " + GorillaLocomotion.Player.Instance.velocityHistorySize);
 				Debug.Log(" ============================================");
-				GorillaLocomotion.Player.Instance.slideControl = 1f - CalcSlideControl(XRDevice.refreshRate);
+				GorillaLocomotion.Player.Instance.slideControl = 1f - CalcSlideControl(displayRefreshRate);
 				GorillaLocomotion.Player.Instance.InitializeValues();
 			}
 		}*/
@@ -299,32 +324,38 @@ public class GorillaTagger : MonoBehaviour
 		{
 			Object.Destroy(OVRManager.instance.gameObject);
 		}
-		/*if (!frameRateUpdated && Application.platform == RuntimePlatform.Android && OVRManager.instance.gameObject.activeSelf)
+		/* UPDATED: Quest/Android Refresh Rate Adjustment
+		 * Original code capped at 90Hz - Quest 2/3/Pro support up to 120Hz
+		 * Original code used deprecated XRDevice.refreshRate on line calculating slideControl
+		 * Updated to use 120Hz cap and use the calculated refresh rate variable instead
+		 *
+		if (!frameRateUpdated && Application.platform == RuntimePlatform.Android && OVRManager.instance.gameObject.activeSelf)
 		{
 			int num = OVRManager.display.displayFrequenciesAvailable.Length - 1;
-			float num2 = OVRManager.display.displayFrequenciesAvailable[num];
+			float targetRefreshRate = OVRManager.display.displayFrequenciesAvailable[num];
 			_ = OVRPlugin.systemDisplayFrequency;
-			while (num2 > 90f)
+			// Updated: Allow up to 120Hz for Quest 2/3/Pro (was 90Hz)
+			while (targetRefreshRate > 120f)
 			{
 				num--;
 				if (num < 0)
 				{
 					break;
 				}
-				num2 = OVRManager.display.displayFrequenciesAvailable[num];
+				targetRefreshRate = OVRManager.display.displayFrequenciesAvailable[num];
 			}
-			if (Mathf.Abs(Time.fixedDeltaTime - 1f / num2 * 0.98f) > 0.0001f)
+			if (Mathf.Abs(Time.fixedDeltaTime - 1f / targetRefreshRate * 0.98f) > 0.0001f)
 			{
-				float num3 = Time.fixedDeltaTime - 1f / num2 * 0.98f;
+				float num3 = Time.fixedDeltaTime - 1f / targetRefreshRate * 0.98f;
 				Debug.Log(" =========== adjusting refresh size =========");
 				Debug.Log("!!!!Time.fixedDeltaTime - (1f / newRefreshRate) * .98f)" + num3);
-				Debug.Log("Old Refresh rate: " + num2);
-				Debug.Log("New Refresh rate: " + num2);
+				Debug.Log("Old Refresh rate: " + targetRefreshRate);
+				Debug.Log("New Refresh rate: " + targetRefreshRate);
 				Debug.Log(" fixedDeltaTime before:\t" + Time.fixedDeltaTime);
-				Debug.Log(" refresh rate         :\t" + num2);
-				Time.fixedDeltaTime = 1f / num2 * 0.98f;
-				OVRPlugin.systemDisplayFrequency = num2;
-				GorillaLocomotion.Player.Instance.velocityHistorySize = Mathf.FloorToInt(num2 * (1f / 12f));
+				Debug.Log(" refresh rate         :\t" + targetRefreshRate);
+				Time.fixedDeltaTime = 1f / targetRefreshRate * 0.98f;
+				OVRPlugin.systemDisplayFrequency = targetRefreshRate;
+				GorillaLocomotion.Player.Instance.velocityHistorySize = Mathf.FloorToInt(targetRefreshRate * (1f / 12f));
 				if (GorillaLocomotion.Player.Instance.velocityHistorySize > 9)
 				{
 					GorillaLocomotion.Player.Instance.velocityHistorySize--;
@@ -333,12 +364,14 @@ public class GorillaTagger : MonoBehaviour
 				Debug.Log(" history size before  :\t" + GorillaLocomotion.Player.Instance.velocityHistorySize);
 				Debug.Log("new history size: " + GorillaLocomotion.Player.Instance.velocityHistorySize);
 				Debug.Log(" ============================================");
-				GorillaLocomotion.Player.Instance.slideControl = 1f - CalcSlideControl(XRDevice.refreshRate);
+				// Fixed: Use targetRefreshRate instead of deprecated XRDevice.refreshRate
+				GorillaLocomotion.Player.Instance.slideControl = 1f - CalcSlideControl(targetRefreshRate);
 				GorillaLocomotion.Player.Instance.InitializeValues();
 				OVRManager.instance.gameObject.SetActive(value: false);
 				frameRateUpdated = true;
 			}
-		}
+		}*/
+		/* Non-VR fallback refresh rate - uses VRUtil.isPresent() which may need verification
 		if (!VRUtil.isPresent() && Application.platform != RuntimePlatform.Android && Mathf.Abs(Time.fixedDeltaTime - 1f / 144f) > 0.0001f)
 		{
 			Debug.Log("updating delta time. was: " + Time.fixedDeltaTime + ". now it's " + 1f / 144f);
