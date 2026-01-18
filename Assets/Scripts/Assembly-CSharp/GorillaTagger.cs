@@ -248,24 +248,20 @@ public class GorillaTagger : MonoBehaviour
 
 	protected void LateUpdate()
 	{
-		/*if (OpenVR.Overlay != null && OpenVR.Overlay.IsDashboardVisible())
-		{
-			if (leftHandTriggerCollider.activeSelf)
-			{
-				leftHandTriggerCollider.SetActive(value: false);
-				rightHandTriggerCollider.SetActive(value: true);
-			}
-			GorillaLocomotion.Player.Instance.inOverlay = true;
-		}
-		else
-		{
-			if (!leftHandTriggerCollider.activeSelf)
-			{
-				leftHandTriggerCollider.SetActive(value: true);
-				rightHandTriggerCollider.SetActive(value: true);
-			}
-			GorillaLocomotion.Player.Instance.inOverlay = false;
-		}*/
+		HandleOculusOverlay();
+		ProcessTagDetection();
+		ProcessHandFeedback();
+		CheckEndStatusEffect();
+		UpdateTrackingPositions();
+		ProcessVoiceChat();
+	}
+
+	/// <summary>
+	/// Handles Oculus input focus and overlay state changes.
+	/// Disables hand colliders when system UI is open.
+	/// </summary>
+	private void HandleOculusOverlay()
+	{
 		if (isOculusLoader)
 		{
 			if (OVRManager.hasInputFocus && !overrideNotInFocus)
@@ -293,151 +289,83 @@ public class GorillaTagger : MonoBehaviour
 				wasInOverlay = true;
 			}
 		}
-		/* UPDATED: PC VR Refresh Rate Adjustment
-		 * Original code used deprecated XRDevice.refreshRate
-		 * Modern approach: Use XRDisplaySubsystem or OVRPlugin.systemDisplayFrequency
-		 *
-		if (isOpenVRLoader && Application.platform != RuntimePlatform.Android)
-		{
-			// Get refresh rate from display subsystem
-			float displayRefreshRate = 90f; // default fallback
-			var displaySubsystems = new List<XRDisplaySubsystem>();
-			SubsystemManager.GetSubsystems(displaySubsystems);
-			if (displaySubsystems.Count > 0 && displaySubsystems[0].TryGetDisplayRefreshRate(out float rate))
-			{
-				displayRefreshRate = rate;
-			}
-
-			if (Mathf.Abs(Time.fixedDeltaTime - 1f / displayRefreshRate) > 0.0001f)
-			{
-				Debug.Log(" =========== adjusting refresh size =========");
-				Debug.Log(" fixedDeltaTime before:\t" + Time.fixedDeltaTime);
-				Debug.Log(" refresh rate         :\t" + displayRefreshRate);
-				Time.fixedDeltaTime = 1f / displayRefreshRate;
-				Debug.Log(" fixedDeltaTime after :\t" + Time.fixedDeltaTime);
-				Debug.Log(" history size before  :\t" + GorillaLocomotion.Player.Instance.velocityHistorySize);
-				GorillaLocomotion.Player.Instance.velocityHistorySize = Mathf.Max(Mathf.Min(Mathf.FloorToInt(displayRefreshRate * (1f / 12f)), 10), 6);
-				if (GorillaLocomotion.Player.Instance.velocityHistorySize > 9)
-				{
-					GorillaLocomotion.Player.Instance.velocityHistorySize--;
-				}
-				Debug.Log("new history size: " + GorillaLocomotion.Player.Instance.velocityHistorySize);
-				Debug.Log(" ============================================");
-				GorillaLocomotion.Player.Instance.slideControl = 1f - CalcSlideControl(displayRefreshRate);
-				GorillaLocomotion.Player.Instance.InitializeValues();
-			}
-		}*/
 		else if (Application.platform != RuntimePlatform.Android && OVRManager.instance != null && OVRManager.OVRManagerinitialized && OVRManager.instance.gameObject != null && OVRManager.instance.gameObject.activeSelf)
 		{
 			Object.Destroy(OVRManager.instance.gameObject);
 		}
-		/* UPDATED: Quest/Android Refresh Rate Adjustment
-		 * Original code capped at 90Hz - Quest 2/3/Pro support up to 120Hz
-		 * Original code used deprecated XRDevice.refreshRate on line calculating slideControl
-		 * Updated to use 120Hz cap and use the calculated refresh rate variable instead
-		 *
-		if (!frameRateUpdated && Application.platform == RuntimePlatform.Android && OVRManager.instance.gameObject.activeSelf)
-		{
-			int num = OVRManager.display.displayFrequenciesAvailable.Length - 1;
-			float targetRefreshRate = OVRManager.display.displayFrequenciesAvailable[num];
-			_ = OVRPlugin.systemDisplayFrequency;
-			// Updated: Allow up to 120Hz for Quest 2/3/Pro (was 90Hz)
-			while (targetRefreshRate > 120f)
-			{
-				num--;
-				if (num < 0)
-				{
-					break;
-				}
-				targetRefreshRate = OVRManager.display.displayFrequenciesAvailable[num];
-			}
-			if (Mathf.Abs(Time.fixedDeltaTime - 1f / targetRefreshRate * 0.98f) > 0.0001f)
-			{
-				float num3 = Time.fixedDeltaTime - 1f / targetRefreshRate * 0.98f;
-				Debug.Log(" =========== adjusting refresh size =========");
-				Debug.Log("!!!!Time.fixedDeltaTime - (1f / newRefreshRate) * .98f)" + num3);
-				Debug.Log("Old Refresh rate: " + targetRefreshRate);
-				Debug.Log("New Refresh rate: " + targetRefreshRate);
-				Debug.Log(" fixedDeltaTime before:\t" + Time.fixedDeltaTime);
-				Debug.Log(" refresh rate         :\t" + targetRefreshRate);
-				Time.fixedDeltaTime = 1f / targetRefreshRate * 0.98f;
-				OVRPlugin.systemDisplayFrequency = targetRefreshRate;
-				GorillaLocomotion.Player.Instance.velocityHistorySize = Mathf.FloorToInt(targetRefreshRate * (1f / 12f));
-				if (GorillaLocomotion.Player.Instance.velocityHistorySize > 9)
-				{
-					GorillaLocomotion.Player.Instance.velocityHistorySize--;
-				}
-				Debug.Log(" fixedDeltaTime after :\t" + Time.fixedDeltaTime);
-				Debug.Log(" history size before  :\t" + GorillaLocomotion.Player.Instance.velocityHistorySize);
-				Debug.Log("new history size: " + GorillaLocomotion.Player.Instance.velocityHistorySize);
-				Debug.Log(" ============================================");
-				// Fixed: Use targetRefreshRate instead of deprecated XRDevice.refreshRate
-				GorillaLocomotion.Player.Instance.slideControl = 1f - CalcSlideControl(targetRefreshRate);
-				GorillaLocomotion.Player.Instance.InitializeValues();
-				OVRManager.instance.gameObject.SetActive(value: false);
-				frameRateUpdated = true;
-			}
-		}*/
-		/* Non-VR fallback refresh rate - uses VRUtil.isPresent() which may need verification
-		if (!VRUtil.isPresent() && Application.platform != RuntimePlatform.Android && Mathf.Abs(Time.fixedDeltaTime - 1f / 144f) > 0.0001f)
-		{
-			Debug.Log("updating delta time. was: " + Time.fixedDeltaTime + ". now it's " + 1f / 144f);
-			Application.targetFrameRate = 144;
-			Time.fixedDeltaTime = 1f / 144f;
-			GorillaLocomotion.Player.Instance.velocityHistorySize = Mathf.Min(Mathf.FloorToInt(12f), 10);
-			if (GorillaLocomotion.Player.Instance.velocityHistorySize > 9)
-			{
-				GorillaLocomotion.Player.Instance.velocityHistorySize--;
-			}
-			Debug.Log("new history size: " + GorillaLocomotion.Player.Instance.velocityHistorySize);
-			GorillaLocomotion.Player.Instance.slideControl = 1f - CalcSlideControl(144f);
-			GorillaLocomotion.Player.Instance.InitializeValues();
-		}*/
+	}
+
+	/// <summary>
+	/// Performs raycast sweeps to detect tag collisions with other players.
+	/// Checks hands, head, and body for potential tags.
+	/// </summary>
+	private void ProcessTagDetection()
+	{
+		// Calculate sweep vectors from last frame positions
 		leftRaycastSweep = leftHandTransform.position - lastLeftHandPositionForTag;
 		leftHeadRaycastSweep = leftHandTransform.position - headCollider.transform.position;
 		rightRaycastSweep = rightHandTransform.position - lastRightHandPositionForTag;
 		rightHeadRaycastSweep = rightHandTransform.position - headCollider.transform.position;
 		headRaycastSweep = headCollider.transform.position - lastHeadPositionForTag;
 		bodyRaycastSweep = bodyCollider.transform.position - lastBodyPositionForTag;
+
 		otherPlayer = null;
-		float num4 = sphereCastRadius * GorillaLocomotion.Player.Instance.scale;
-		nonAllocHits = Physics.SphereCastNonAlloc(lastLeftHandPositionForTag, num4, leftRaycastSweep.normalized, nonAllocRaycastHits, Mathf.Max(leftRaycastSweep.magnitude, num4), gorillaTagColliderLayerMask, QueryTriggerInteraction.Collide);
+		float castRadius = sphereCastRadius * GorillaLocomotion.Player.Instance.scale;
+
+		// Left hand sweep
+		nonAllocHits = Physics.SphereCastNonAlloc(lastLeftHandPositionForTag, castRadius, leftRaycastSweep.normalized, nonAllocRaycastHits, Mathf.Max(leftRaycastSweep.magnitude, castRadius), gorillaTagColliderLayerMask, QueryTriggerInteraction.Collide);
 		if (nonAllocHits > 0 && TryToTag(nonAllocRaycastHits[0], isBodyTag: false, out tryPlayer))
 		{
 			otherPlayer = tryPlayer;
 		}
-		nonAllocHits = Physics.SphereCastNonAlloc(headCollider.transform.position, num4, leftHeadRaycastSweep.normalized, nonAllocRaycastHits, Mathf.Max(leftHeadRaycastSweep.magnitude, num4), gorillaTagColliderLayerMask, QueryTriggerInteraction.Collide);
+
+		// Left hand to head sweep
+		nonAllocHits = Physics.SphereCastNonAlloc(headCollider.transform.position, castRadius, leftHeadRaycastSweep.normalized, nonAllocRaycastHits, Mathf.Max(leftHeadRaycastSweep.magnitude, castRadius), gorillaTagColliderLayerMask, QueryTriggerInteraction.Collide);
 		if (nonAllocHits > 0 && TryToTag(nonAllocRaycastHits[0], isBodyTag: false, out tryPlayer))
 		{
 			otherPlayer = tryPlayer;
 		}
-		nonAllocHits = Physics.SphereCastNonAlloc(lastRightHandPositionForTag, num4, rightRaycastSweep.normalized, nonAllocRaycastHits, Mathf.Max(rightRaycastSweep.magnitude, num4), gorillaTagColliderLayerMask, QueryTriggerInteraction.Collide);
+
+		// Right hand sweep
+		nonAllocHits = Physics.SphereCastNonAlloc(lastRightHandPositionForTag, castRadius, rightRaycastSweep.normalized, nonAllocRaycastHits, Mathf.Max(rightRaycastSweep.magnitude, castRadius), gorillaTagColliderLayerMask, QueryTriggerInteraction.Collide);
 		if (nonAllocHits > 0 && TryToTag(nonAllocRaycastHits[0], isBodyTag: false, out tryPlayer))
 		{
 			otherPlayer = tryPlayer;
 		}
-		nonAllocHits = Physics.SphereCastNonAlloc(headCollider.transform.position, num4, rightHeadRaycastSweep.normalized, nonAllocRaycastHits, Mathf.Max(rightHeadRaycastSweep.magnitude, num4), gorillaTagColliderLayerMask, QueryTriggerInteraction.Collide);
+
+		// Right hand to head sweep
+		nonAllocHits = Physics.SphereCastNonAlloc(headCollider.transform.position, castRadius, rightHeadRaycastSweep.normalized, nonAllocRaycastHits, Mathf.Max(rightHeadRaycastSweep.magnitude, castRadius), gorillaTagColliderLayerMask, QueryTriggerInteraction.Collide);
 		if (nonAllocHits > 0 && TryToTag(nonAllocRaycastHits[0], isBodyTag: false, out tryPlayer))
 		{
 			otherPlayer = tryPlayer;
 		}
-		nonAllocHits = Physics.SphereCastNonAlloc(headCollider.transform.position, headCollider.radius * headCollider.transform.localScale.x * GorillaLocomotion.Player.Instance.scale, headRaycastSweep.normalized, nonAllocRaycastHits, Mathf.Max(headRaycastSweep.magnitude, num4), gorillaTagColliderLayerMask, QueryTriggerInteraction.Collide);
+
+		// Head sweep
+		float headRadius = headCollider.radius * headCollider.transform.localScale.x * GorillaLocomotion.Player.Instance.scale;
+		nonAllocHits = Physics.SphereCastNonAlloc(headCollider.transform.position, headRadius, headRaycastSweep.normalized, nonAllocRaycastHits, Mathf.Max(headRaycastSweep.magnitude, castRadius), gorillaTagColliderLayerMask, QueryTriggerInteraction.Collide);
 		if (nonAllocHits > 0 && TryToTag(nonAllocRaycastHits[0], isBodyTag: true, out tryPlayer))
 		{
 			otherPlayer = tryPlayer;
 		}
+
+		// Body capsule sweep
 		topVector = lastBodyPositionForTag + bodyVector;
 		bottomVector = lastBodyPositionForTag - bodyVector;
-		nonAllocHits = Physics.CapsuleCastNonAlloc(topVector, bottomVector, bodyCollider.radius * 2f * GorillaLocomotion.Player.Instance.scale, bodyRaycastSweep.normalized, nonAllocRaycastHits, Mathf.Max(bodyRaycastSweep.magnitude, num4), gorillaTagColliderLayerMask, QueryTriggerInteraction.Collide);
+		float bodyRadius = bodyCollider.radius * 2f * GorillaLocomotion.Player.Instance.scale;
+		nonAllocHits = Physics.CapsuleCastNonAlloc(topVector, bottomVector, bodyRadius, bodyRaycastSweep.normalized, nonAllocRaycastHits, Mathf.Max(bodyRaycastSweep.magnitude, castRadius), gorillaTagColliderLayerMask, QueryTriggerInteraction.Collide);
 		if (nonAllocHits > 0 && TryToTag(nonAllocRaycastHits[0], isBodyTag: true, out tryPlayer))
 		{
 			otherPlayer = tryPlayer;
 		}
+
+		// Report tag to master client
 		if (otherPlayer != null && GorillaGameManager.instance != null)
 		{
 			Debug.Log("tagging someone yeet");
-			PhotonView.Get(GorillaGameManager.instance.GetComponent<GorillaGameManager>()).RPC("ReportTagRPC", RpcTarget.MasterClient, otherPlayer);
+			PhotonView.Get(GorillaGameManager.instance).RPC("ReportTagRPC", RpcTarget.MasterClient, otherPlayer);
 		}
+
+		// Find local VRRig if not set
 		if (myVRRig == null && PhotonNetwork.InRoom)
 		{
 			foreach (VRRig vrrig in GorillaParent.instance.vrrigs)
@@ -445,104 +373,120 @@ public class GorillaTagger : MonoBehaviour
 				if (vrrig != null && !vrrig.isOfflineVRRig && vrrig.photonView != null && vrrig.photonView.IsMine)
 				{
 					myVRRig = vrrig;
+					break;
 				}
 			}
 		}
-		if (!GorillaLocomotion.Player.Instance.IsHandSliding(forLeftHand: true) && GorillaLocomotion.Player.Instance.IsHandTouching(forLeftHand: true) && !leftHandTouching && Time.time > lastLeftTap + tapCoolDown && !GorillaLocomotion.Player.Instance.inOverlay)
+	}
+
+	/// <summary>
+	/// Processes hand tap and slide feedback including haptics and audio.
+	/// </summary>
+	private void ProcessHandFeedback()
+	{
+		var player = GorillaLocomotion.Player.Instance;
+
+		// Left hand feedback
+		ProcessSingleHandFeedback(
+			isLeftHand: true,
+			ref leftHandTouching,
+			ref lastLeftTap,
+			leftHandSlideSource,
+			player.leftHandSurfaceOverride,
+			player.leftHandMaterialTouchIndex
+		);
+
+		// Right hand feedback
+		ProcessSingleHandFeedback(
+			isLeftHand: false,
+			ref rightHandTouching,
+			ref lastRightTap,
+			rightHandSlideSource,
+			player.rightHandSurfaceOverride,
+			player.rightHandMaterialTouchIndex
+		);
+	}
+
+	private void ProcessSingleHandFeedback(bool isLeftHand, ref bool handTouching, ref float lastTap, AudioSource slideSource, GorillaSurfaceOverride surfaceOverride, int materialTouchIndex)
+	{
+		var player = GorillaLocomotion.Player.Instance;
+		bool isSliding = player.IsHandSliding(forLeftHand: isLeftHand);
+		bool isTouching = player.IsHandTouching(forLeftHand: isLeftHand);
+
+		if (!isSliding && isTouching && !handTouching && Time.time > lastTap + tapCoolDown && !player.inOverlay)
 		{
-			StartVibration(forLeftController: true, tapHapticStrength, tapHapticDuration);
-			tempInt = ((GorillaLocomotion.Player.Instance.leftHandSurfaceOverride != null) ? GorillaLocomotion.Player.Instance.leftHandSurfaceOverride.overrideIndex : GorillaLocomotion.Player.Instance.leftHandMaterialTouchIndex);
+			StartVibration(forLeftController: isLeftHand, tapHapticStrength, tapHapticDuration);
+			tempInt = (surfaceOverride != null) ? surfaceOverride.overrideIndex : materialTouchIndex;
 			if (PhotonNetwork.InRoom && myVRRig != null)
 			{
-				PhotonView.Get(myVRRig).RPC("PlayHandTap", RpcTarget.Others, tempInt, true, handTapVolume);
+				PhotonView.Get(myVRRig).RPC("PlayHandTap", RpcTarget.Others, tempInt, isLeftHand, handTapVolume);
 			}
-			offlineVRRig.PlayHandTapLocal(tempInt, isLeftHand: true, handTapVolume);
-			lastLeftTap = Time.time;
+			offlineVRRig.PlayHandTapLocal(tempInt, isLeftHand: isLeftHand, handTapVolume);
+			lastTap = Time.time;
 		}
-		else if (GorillaLocomotion.Player.Instance.IsHandSliding(forLeftHand: true) && !GorillaLocomotion.Player.Instance.inOverlay)
+		else if (isSliding && !player.inOverlay)
 		{
-			StartVibration(forLeftController: true, tapHapticStrength / 5f, Time.fixedDeltaTime);
-			if (!leftHandSlideSource.isPlaying)
+			StartVibration(forLeftController: isLeftHand, tapHapticStrength / 5f, Time.fixedDeltaTime);
+			if (!slideSource.isPlaying)
 			{
-				leftHandSlideSource.Play();
+				slideSource.Play();
 			}
 		}
-		if (!GorillaLocomotion.Player.Instance.IsHandSliding(forLeftHand: true))
+
+		if (!isSliding)
 		{
-			leftHandSlideSource.Stop();
+			slideSource.Stop();
 		}
-		if (!GorillaLocomotion.Player.Instance.IsHandSliding(forLeftHand: false) && GorillaLocomotion.Player.Instance.IsHandTouching(forLeftHand: false) && !rightHandTouching && Time.time > lastRightTap + tapCoolDown && !GorillaLocomotion.Player.Instance.inOverlay)
-		{
-			StartVibration(forLeftController: false, tapHapticStrength, tapHapticDuration);
-			tempInt = ((GorillaLocomotion.Player.Instance.rightHandSurfaceOverride != null) ? GorillaLocomotion.Player.Instance.rightHandSurfaceOverride.overrideIndex : GorillaLocomotion.Player.Instance.rightHandMaterialTouchIndex);
-			if (PhotonNetwork.InRoom && myVRRig != null)
-			{
-				PhotonView.Get(myVRRig).RPC("PlayHandTap", RpcTarget.Others, tempInt, false, handTapVolume);
-			}
-			offlineVRRig.PlayHandTapLocal(tempInt, isLeftHand: false, handTapVolume);
-			lastRightTap = Time.time;
-		}
-		else if (GorillaLocomotion.Player.Instance.IsHandSliding(forLeftHand: false) && !GorillaLocomotion.Player.Instance.inOverlay)
-		{
-			StartVibration(forLeftController: false, tapHapticStrength / 5f, Time.fixedDeltaTime);
-			if (!rightHandSlideSource.isPlaying)
-			{
-				rightHandSlideSource.Play();
-			}
-		}
-		if (!GorillaLocomotion.Player.Instance.IsHandSliding(forLeftHand: false))
-		{
-			rightHandSlideSource.Stop();
-		}
-		CheckEndStatusEffect();
-		leftHandTouching = GorillaLocomotion.Player.Instance.IsHandTouching(forLeftHand: true);
-		rightHandTouching = GorillaLocomotion.Player.Instance.IsHandTouching(forLeftHand: false);
+
+		handTouching = isTouching;
+	}
+
+	/// <summary>
+	/// Updates tracking positions for next frame's sweep calculations.
+	/// </summary>
+	private void UpdateTrackingPositions()
+	{
 		lastLeftHandPositionForTag = leftHandTransform.position;
 		lastRightHandPositionForTag = rightHandTransform.position;
 		lastBodyPositionForTag = bodyCollider.transform.position;
 		lastHeadPositionForTag = headCollider.transform.position;
+	}
+
+	/// <summary>
+	/// Handles voice chat push-to-talk and push-to-mute functionality.
+	/// </summary>
+	private void ProcessVoiceChat()
+	{
 		if (GorillaComputer.instance.voiceChatOn == "TRUE")
 		{
 			if (myRecorder == null)
 			{
 				myRecorder = PhotonNetworkController.Instance.GetComponent<Recorder>();
 			}
-			if (myRecorder != null)
+			if (myRecorder == null) return;
+
+			if (GorillaComputer.instance.pttType == "ALL CHAT")
 			{
-				if (GorillaComputer.instance.pttType != "ALL CHAT")
-				{
-					primaryButtonPressRight = false;
-					secondaryButtonPressRight = false;
-					primaryButtonPressLeft = false;
-					secondaryButtonPressLeft = false;
-					primaryButtonPressRight = ControllerInputPoller.PrimaryButtonPress(XRNode.RightHand);
-					secondaryButtonPressRight = ControllerInputPoller.SecondaryButtonPress(XRNode.RightHand);
-					primaryButtonPressLeft = ControllerInputPoller.PrimaryButtonPress(XRNode.LeftHand);
-					secondaryButtonPressLeft = ControllerInputPoller.PrimaryButtonPress(XRNode.LeftHand);
-					if (primaryButtonPressRight || secondaryButtonPressRight || primaryButtonPressLeft || secondaryButtonPressLeft)
-					{
-						if (GorillaComputer.instance.pttType == "PUSH TO MUTE")
-						{
-							myRecorder.TransmitEnabled = false;
-						}
-						else if (GorillaComputer.instance.pttType == "PUSH TO TALK")
-						{
-							myRecorder.TransmitEnabled = true;
-						}
-					}
-					else if (GorillaComputer.instance.pttType == "PUSH TO MUTE")
-					{
-						myRecorder.TransmitEnabled = true;
-					}
-					else if (GorillaComputer.instance.pttType == "PUSH TO TALK")
-					{
-						myRecorder.TransmitEnabled = false;
-					}
-				}
-				else if (!myRecorder.TransmitEnabled)
+				if (!myRecorder.TransmitEnabled)
 				{
 					myRecorder.TransmitEnabled = true;
 				}
+				return;
+			}
+
+			// Check for any PTT button press
+			bool anyButtonPressed = ControllerInputPoller.PrimaryButtonPress(XRNode.RightHand)
+				|| ControllerInputPoller.SecondaryButtonPress(XRNode.RightHand)
+				|| ControllerInputPoller.PrimaryButtonPress(XRNode.LeftHand)
+				|| ControllerInputPoller.SecondaryButtonPress(XRNode.LeftHand);
+
+			if (GorillaComputer.instance.pttType == "PUSH TO MUTE")
+			{
+				myRecorder.TransmitEnabled = !anyButtonPressed;
+			}
+			else if (GorillaComputer.instance.pttType == "PUSH TO TALK")
+			{
+				myRecorder.TransmitEnabled = anyButtonPressed;
 			}
 		}
 		else if (myRecorder != null && myRecorder.TransmitEnabled)
